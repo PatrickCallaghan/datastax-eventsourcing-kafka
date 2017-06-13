@@ -1,0 +1,32 @@
+case class Event (date: String, bucket: Int, id: java.util.UUID, data: String, eventtype: String, 
+aggregatetype: String, time: java.util.Date, loglevel: String, host: String); 
+
+val events =  sc.cassandraTable[Event]("datastax", "eventsource").cache; 
+events.count
+
+val max = events.map(_.time).max
+val min = events.map(_.time).min
+
+val yesterday = new java.util.Date(java.util.Calendar.getInstance().getTime().getTime()-200000000);
+yesterday
+
+val before = events.filter(_.time.before(yesterday)); 
+
+before.take(10).foreach(print)
+ 
+before.count
+ 
+val after = events.filter(_.time.after(yesterday)); 
+
+after.take(10).foreach(print)
+ 
+after.count
+
+
+val start = new java.util.Date(java.util.Calendar.getInstance().getTime().getTime()-200000000);
+val end = new java.util.Date(java.util.Calendar.getInstance().getTime().getTime()-190000000);
+
+val filtered = events.filter(_.time.after(start)).filter(_.time.before(end)).cache;
+filtered.count
+
+  

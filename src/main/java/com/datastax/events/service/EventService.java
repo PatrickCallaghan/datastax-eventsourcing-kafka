@@ -9,16 +9,22 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.joda.time.DateTime;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.datastax.demo.utils.PropertyHelper;
+import com.datastax.events.Main;
 import com.datastax.events.dao.EventDao;
 import com.datastax.events.model.Event;
 
 public class EventService {
 
+	private static Logger logger = LoggerFactory.getLogger(EventService.class);
 	private EventDao dao;
 	private ExecutorService executor = Executors.newFixedThreadPool(4);
 	private KafkaProducer<String, String> producer;
@@ -30,9 +36,11 @@ public class EventService {
 
 		// Set up Kafka producer
 		String bootstrapServer = PropertyHelper.getProperty("bootstrapServer", "localhost:9092");
-		
+
 		Properties props = new Properties();
 		props.put("bootstrap.servers", bootstrapServer);
+		props.put("metadata.fetch.timeout.ms",1000);
+		props.put("request.timeout.ms",25);
 		props.put("acks", "all");
 		props.put("retries", 1);
 		props.put("batch.size", 16384);
@@ -92,9 +100,23 @@ public class EventService {
 
 	public void insertEvent(Event event) {
 		
-		dao.insertEvent(event);
-		producer.send(
-				new ProducerRecord<String, String>("eventsource", "" + counter.incrementAndGet(), event.toString()));
+		ProducerRecord<String, String> record = new ProducerRecord<String, String>("eventsource", "" + counter.incrementAndGet(), event.toString());
+		
+		dao.insertEvent(event);		
+		producer.send(record, new MyCallback());
+	}
+
+	class MyCallback implements Callback {
+
+		@Override
+		public void onCompletion(RecordMetadata metadata, Exception exception) {
+			
+			if (exception != null){
+				logger.error(exception.getMessage());
+				System.exit(10);
+			}
+	    }
+
 	}
 
 	@Override

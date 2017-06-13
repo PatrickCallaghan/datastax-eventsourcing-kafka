@@ -5,8 +5,10 @@ import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.kafka.clients.producer.Callback;
@@ -29,6 +31,8 @@ public class EventService {
 	private ExecutorService executor = Executors.newFixedThreadPool(4);
 	private KafkaProducer<String, String> producer;
 	private AtomicLong counter = new AtomicLong(0);
+	private Future<RecordMetadata> send;
+	private RecordMetadata recordMetadata;
 
 	public EventService() {
 		String contactPointsStr = PropertyHelper.getProperty("contactPoints", "localhost");
@@ -102,21 +106,16 @@ public class EventService {
 		
 		ProducerRecord<String, String> record = new ProducerRecord<String, String>("eventsource", "" + counter.incrementAndGet(), event.toString());
 		
-		dao.insertEvent(event);		
-		producer.send(record, new MyCallback());
-	}
-
-	class MyCallback implements Callback {
-
-		@Override
-		public void onCompletion(RecordMetadata metadata, Exception exception) {
-			
-			if (exception != null){
-				logger.error(exception.getMessage());
-				System.exit(10);
-			}
-	    }
-
+		dao.insertEvent(event);
+		
+		try {
+			recordMetadata = producer.send(record).get();
+		
+		}catch (InterruptedException | ExecutionException e) {
+			e.printStackTrace();
+			logger.info(e.getMessage());
+			logger.info(record.key() + " - " + record.value());			
+		}		
 	}
 
 	@Override

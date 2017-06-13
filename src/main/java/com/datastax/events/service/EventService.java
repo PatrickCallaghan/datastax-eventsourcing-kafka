@@ -29,10 +29,12 @@ public class EventService {
 		this.dao = new EventDao(contactPointsStr.split(","));
 
 		// Set up Kafka producer
+		String bootstrapServer = PropertyHelper.getProperty("bootstrapServer", "localhost:9092");
+		
 		Properties props = new Properties();
-		props.put("bootstrap.servers", "localhost:9092");
+		props.put("bootstrap.servers", bootstrapServer);
 		props.put("acks", "all");
-		props.put("retries", 0);
+		props.put("retries", 1);
 		props.put("batch.size", 16384);
 		props.put("linger.ms", 1);
 		props.put("buffer.memory", 33554432);

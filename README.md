@@ -8,6 +8,10 @@ To use Spark you will need to provide your own Cassandra and Spark deployments. 
 First we start DSE in SearchAnalyics mode to allow us to use both Spark and DSE Search - 
 http://docs.datastax.com/en/dse/5.1/dse-admin/datastax_enterprise/operations/startStop/startDseStandalone.html?hl=starting
 
+We will also use kafka to place events on a queue for ingestion or producing by another system. 
+
+You will need to download and config kafka with a topic of 'eventsourcing'. All details are here - https://kafka.apache.org/quickstart
+
 The implementation uses bucketing to group all data into particular time buckets for replay. The time bucket used in this example is 1 minute but any time bucket can be used. Also depending how many days, months, years of events that need to be kept, it may be beneficial to spread the events over different tiers of tables.    
 
 To create the schema, run the following

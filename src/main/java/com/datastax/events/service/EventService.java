@@ -20,12 +20,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.datastax.demo.utils.PropertyHelper;
-import com.datastax.events.Main;
 import com.datastax.events.dao.EventDao;
 import com.datastax.events.model.Event;
 
 public class EventService {
 
+	private static final String EVENTSOURCE = "eventsource";
 	private static Logger logger = LoggerFactory.getLogger(EventService.class);
 	private EventDao dao;
 	private ExecutorService executor = Executors.newFixedThreadPool(4);
@@ -102,9 +102,9 @@ public class EventService {
 		return events;
 	}
 
-	public void insertEvent(Event event) {
+	public void insertEventSync(Event event) {
 		
-		ProducerRecord<String, String> record = new ProducerRecord<String, String>("eventsource", "" + counter.incrementAndGet(), event.toString());
+		ProducerRecord<String, String> record = new ProducerRecord<String, String>(EVENTSOURCE, "" + counter.incrementAndGet(), event.toString());
 		
 		dao.insertEvent(event);
 		
@@ -118,6 +118,32 @@ public class EventService {
 		}		
 	}
 
+	public void insertEventAsync(Event event) {
+		
+		ProducerRecord<String, String> record = new ProducerRecord<String, String>(EVENTSOURCE, "" + counter.incrementAndGet(), event.toString());
+		
+		dao.insertEvent(event);
+		producer.send(record, new CallBack(record));
+	}
+	
+	class CallBack implements Callback{
+
+		
+		private ProducerRecord<String, String> record;
+
+		public CallBack(ProducerRecord<String, String> record){
+			this.record = record;
+		}
+				
+		@Override
+		public void onCompletion(RecordMetadata rm, Exception e) {
+			if (e != null){
+				logger.info(e.getMessage());
+				logger.info(record.key() + " - " + record.value());			
+			}
+		}
+	}
+	
 	@Override
 	public void finalize() {
 		producer.close();

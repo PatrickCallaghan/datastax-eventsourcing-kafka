@@ -25,7 +25,7 @@ class EventWriter implements KillableRunner {
 			
 			if (event!=null){
 				try {
-					this.service.insertEvent(event);
+					this.service.insertEventSync(event);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
